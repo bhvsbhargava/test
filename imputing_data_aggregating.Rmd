@@ -1,0 +1,63 @@
+---
+title: "Imputed data_aggregated"
+author: "Bhargavarama Sarma B"
+date: "27 July 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+In this document we discuss how we imputed the data and agregated it. Let us have a look at the missing values in each of the variables.
+
+```{r missing, cache=TRUE}
+load("/home/bhargava/Desktop/Link to RData Sets/For imputing/mydata.Rdata")
+apply(is.na(mydata),2,sum)
+```
+We can impute the values using `mice` package. But because of the large number missing variables we need to deal it in splits. So let us choose the data carefully so that each split consists of only the variables which can effect each other.
+```{r emp,cache=TRUE, echo=FALSE}
+mydata_emp_cat<-mydata[,c(5:7,20:45,86)]
+library(mice)
+impute_emp_cat<-mice(mydata_emp_cat)
+```
+```{r, cache=TRUE, echo=FALSE}
+mydata_imputed<-mydata
+mydata_imputed[,names(mydata_emp_cat)]<-complete(impute_emp_cat)
+```
+```{r edu,cache=TRUE,echo=FALSE}
+mydata_edu<-mydata_imputed[,c(5,20:45,47,52:59,61:64,66,68,69)]
+impute_edu<-mice(mydata_edu)
+mydata_imputed[,names(mydata_edu)]<-complete(impute_edu)
+```
+```{r inve,cache=TRUE, echo=FALSE}
+mydata_region<-mydata_imputed[,c(5:8,20:45)]
+impute_region<-mice(mydata_region)
+mydata_imputed[,names(mydata_region)]<-complete(impute_region)
+```
+
+```{r inv, cache=TRUE, echo=FALSE}
+mydata_inv<-mydata_imputed[mydata_imputed$funded_or_not=="1",c(5,8,20:45,52:59,66,68,69,71,74,75,77,79)]
+impute_inv<-mice(mydata_inv,nnet.MaxNWts=5000)
+mydata_imputed[mydata_imputed$funded_or_not=="1",names(mydata_inv)]<-complete(impute_inv)
+
+```
+
+```{r num_fou, cache=TRUE, echo=FALSE}
+mydata_num<-mydata_imputed[,c(5:8,13,20:45,49,47,52:59,66,68,69)]
+impute_num<-mice(mydata_num)
+mydata_imputed[,names(mydata_num)]<-complete(impute_num)
+
+```
+Since there are more than 50 levels in the `founder region` variables, `mice` cannot impute the founder region. So, we imputed the missing values same as that of the company region.
+```{r}
+mydata_imputed$founder_region[is.na(mydata_imputed$founder_region)]<-mydata_imputed$region[is.na(mydata_imputed$founder_region)]
+```
+
+All the needed variables are imputed which is evident by looking at
+```{r}
+apply(is.na(mydata_imputed),2,sum)
+```
+We can see that still some variables of investor profile and funding rounds have missing values but these are the cases related to where a company hasn't been funded. So we should not impute them at all.
+
